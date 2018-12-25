@@ -2,21 +2,35 @@ import numpy as np
 #from integration_max_entropy import moments
 from sampling import samples
 from scipy import integrate
+import os
 
 #np.random.seed(10)
-f = open("myfile.txt", "a");
-
+name_file = "myfile.txt"
+f = open(name_file, "a");
+st0="#"
+for i in range(0,12):
+    if i==0:
+        st0 += "{:<13}".format("q" + str(i + 1))
+    elif i<6:
+        st0 += "{:<14}".format("q" + str(i + 1))
+    else:
+        st0+="{:<14}".format("lamb"+str(i-6+1))
+st0+= "\n"
+if os.stat(name_file).st_size ==0:
+    f.write(st0);
 for i in range(0,1):
-    La, Mo = samples(1)
+    La, Mo, La0 = samples(1)
     Mo = np.array(Mo)
     La = np.array(La)
     st = "";
+    mo = ['{:.6e}'.format(float(x)) for x in Mo[0,:]]
+    la = ['{:.6e}'.format(float(x)) for x in La[0,:]]
     for j in range(0,6):
-        st += str(Mo[0,j]) + "  "
+        st += mo[j] + " "
     for j in range(0,6):
-        st += str(La[0,j]) + "  "
+        st += la[j] + " "
     st += "\n"
-    #f.write(st);
+    f.write(st);
 
 print("look!")
 
