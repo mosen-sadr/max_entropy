@@ -56,9 +56,13 @@ for i in range(0, N):
 
 print("no. rejected samples = "+str(rejected))
 '''
-
-N = 10
-La, Mo = samples(N)
+address = "modified.txt"
+x = np.loadtxt(address,skiprows=1, unpack=True);
+N1 = 1100
+#La, Mo = samples(N)
+for i in range(N1):
+    Mo.append(x[:, i][0:6])
+    La.append(x[:, i][6:12])
 print("look!")
 Mo = np.array(Mo);
 La = np.array(La);
@@ -111,7 +115,7 @@ Y = La;
 X = Mo;
 X = np.append(X, new_cov(Mo), axis=1)
 N = La.shape[0];
-M = int(N/2)
+M = int(N)
 #index = [randint(0, N-1) for i in range(0, M)]
 index = list(range(M))
 print(index);
@@ -172,10 +176,10 @@ opt = gp.train.ScipyOptimizer()
 opt.minimize(model, disp=True, maxiter=10)
 '''
 
-k1 =  gp.kernels.Matern12(input_dim=6, active_dims=[0,1,2,3,4,5], ARD=True)
-k2 = gp.kernels.Matern12(input_dim=1, active_dims=[6], ARD=True)
+k1 =  gp.kernels.RBF(input_dim=3, active_dims=[1,3,5], ARD=True)
+k2 = gp.kernels.RBF(input_dim=1, active_dims=[6], ARD=True)
 for i in range(1,6):
-    k2 = k2*gp.kernels.Matern12(input_dim=1, active_dims=[i + 6], ARD=True)
+    k2 = k2*gp.kernels.RBF(input_dim=1, active_dims=[i + 6], ARD=True)
 
 #kernel = k1+k2
 #k2 = gp.kernels.Matern52(input_dim=2, active_dims=[1,3])
@@ -185,7 +189,7 @@ for i in range(1,6):
 #kern_list = [k1, k2, k3, k4, k5]
 kernel = k1
 #kernel = k2
-kernel = k1*k2
+#kernel = k1*k2
 #kernel = mk.SeparateIndependentMok(kern_list)
 
 #feature_list = gp.features.InducingPoints(X[index,...].copy())
@@ -198,22 +202,24 @@ kernel = k1*k2
 #meanf = gp.mean_functions.Zero()
 
 #model = gp.models.GPR(X, Y, kernel, meanf)
-model = gp.models.GPR(X, Y, kernel)
-
+#model = gp.models.GPR(X, Y, kernel)
+Z = X[:M, :].copy()
+model = gp.models.SGPR(X, Y, kernel, Z)
 
 #opt = gp.train.AdamOptimizer(1e-6)
 #opt.minimize(model, maxiter=500)
 
-opt = gp.train.ScipyOptimizer(tol=1e-16)
+opt = gp.train.ScipyOptimizer(tol=1e-6)
 opt.minimize(model, disp=True, maxiter=500)
 
 
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import cm
 
 ystar,varstar = model.predict_y(X)
-err = abs(ystar-Y)#/abs(Y)
+err = abs(ystar-Y)/abs(Y)
 
 
 fig, ax = plt.subplots();
@@ -298,9 +304,12 @@ ax.set_ylabel("Lambda"+str(p+1)+" of induced points")
 plt.legend()
 plt.show()
 
+N2 = len(x[0])-N1
+MoNew = []; LaNew = [];
+for i in range(N1,N1+N2):
+    MoNew.append(x[:, i][0:6])
+    LaNew.append(x[:, i][6:12])
 
-
-MoNew, LaNew = samples(N)
 '''
 MoNew = []
 LaNew = []
@@ -322,43 +331,23 @@ LaNew = np.array(LaNew);
 
 YNew = LaNew;
 XNew = MoNew;
-Diff_Mo = (Mo-MoNew)/Mo
-Diff_La = (La-LaNew)/La
 XNew = np.append(XNew, new_cov(MoNew), axis=1)
-N = LaNew.shape[0];
-
-print("no. acceppted samples, N = "+str(N))
 
 
 ystarNew, varstarNew = model.predict_y(XNew)
 errNew = abs(ystarNew-YNew)/abs(YNew)
 
+pp = [1,3,5]
 
 fig, ax = plt.subplots();
-[plt.plot(Diff_La[:,p],'.',label='p='+str(p+1)) for p in range(P)]
-ax.set_ylabel("Diff La")
-ax.set_yscale("log")
-plt.legend()
-plt.show()
-
-
-fig, ax = plt.subplots();
-[plt.plot(Diff_Mo[:,p],'.',label='p='+str(p+1)) for p in range(P)]
-ax.set_ylabel("Diff Mo")
-ax.set_yscale("log")
-plt.legend()
-plt.show()
-
-
-fig, ax = plt.subplots();
-[plt.plot(errNew[:,p],'.',label='p='+str(p+1)) for p in range(P)]
+[plt.plot(errNew[:,p],'.',label='p='+str(p+1)) for p in pp]
 ax.set_ylabel("error")
 ax.set_yscale("log")
 plt.legend()
 plt.show()
 
 fig, ax = plt.subplots();
-[plt.plot(varstarNew[:,p],'.',label='p='+str(p+1)) for p in range(P)]
+[plt.plot(varstarNew[:,p],'.',label='p='+str(p+1)) for p in pp]
 ax.set_ylabel("variance")
 ax.set_yscale("log")
 plt.legend()
@@ -369,8 +358,85 @@ indd = np.where(abs(varstarNew[:,0:1])+abs(varstarNew[:,1:2])+abs(varstarNew[:,2
 indd = indd[0]
 #print("indd = "+str(indd))
 fig, ax = plt.subplots();
-[plt.plot(errNew[indd,p],'.',label='p='+str(p+1)) for p in range(P)]
+[plt.plot(errNew[indd,p],'.',label='p='+str(p+1)) for p in pp]
 ax.set_ylabel("error")
 ax.set_yscale("log")
 plt.legend()
+plt.show()
+
+def zhi(v,l,i):
+    return Z(v,l)*v**i
+def Z(v, l):
+    return np.exp(-v * l[0] - v**2 * l[1] - v**3 * l[2] - v**4 * l[3] - v**5 * l[4] - v**6 * l[5])
+
+many = 4
+vvf =  np.linspace(-10.0, 10.0, num=1000)
+vvc =  np.linspace(-10.0, 10.0, num=100)
+
+cm0 = cm.coolwarm(np.linspace(0,1,many))
+
+fig, ax = plt.subplots();
+color=iter(cm0)
+for p in range(many):
+    c = next(color)
+    plt.plot(vvf, Z(vvf, YNew[p, :]), '--', c=c)
+    plt.plot(vvc, Z(vvc, ystarNew[p, :]), 'o', c=c)
+ax.set_ylabel("Z")
+#plt.ylim(0.0,2.0)
+plt.show()
+
+fig, ax = plt.subplots();
+color=iter(cm0)
+for p in range(many):
+    c = next(color)
+    plt.plot(vvf, zhi(vvf, YNew[p, :],1), '--', c=c)
+    plt.plot(vvc, zhi(vvc, ystarNew[p, :],1), 'o', c=c)
+ax.set_ylabel("vZ")
+plt.show()
+
+fig, ax = plt.subplots();
+color=iter(cm0)
+for p in range(many):
+    c = next(color)
+    plt.plot(vvf, zhi(vvf, YNew[p, :],2), '--', c=c)
+    plt.plot(vvc, zhi(vvc, ystarNew[p, :],2), 'o', c=c)
+ax.set_ylabel("v^2Z")
+plt.show()
+
+fig, ax = plt.subplots();
+color=iter(cm0)
+for p in range(many):
+    c = next(color)
+    plt.plot(vvf, zhi(vvf, YNew[p, :],3), '--', c=c)
+    plt.plot(vvc, zhi(vvc, ystarNew[p, :],3), 'o', c=c)
+ax.set_ylabel("v^3Z")
+plt.show()
+
+
+fig, ax = plt.subplots();
+color=iter(cm0)
+for p in range(many):
+    c = next(color)
+    plt.plot(vvf, zhi(vvf, YNew[p, :],4), '--', c=c)
+    plt.plot(vvc, zhi(vvc, ystarNew[p, :],4), 'o', c=c)
+ax.set_ylabel("v^4Z")
+plt.show()
+
+fig, ax = plt.subplots();
+color=iter(cm0)
+for p in range(many):
+    c = next(color)
+    plt.plot(vvf, zhi(vvf, YNew[p, :],5), '--', c=c)
+    plt.plot(vvc, zhi(vvc, ystarNew[p, :],5), 'o', c=c)
+ax.set_ylabel("v^5Z")
+plt.show()
+
+
+fig, ax = plt.subplots();
+color=iter(cm0)
+for p in range(many):
+    c = next(color)
+    plt.plot(vvf, zhi(vvf, YNew[p, :],6), '--', c=c)
+    plt.plot(vvc, zhi(vvc, ystarNew[p, :],6), 'o', c=c)
+ax.set_ylabel("v^6Z")
 plt.show()

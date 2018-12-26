@@ -49,12 +49,12 @@ def dh2dli(v,l,i):
 #        return v ** 2 * (-i * l[i - 1] * v ** (i - 1)) * Z(v, l)
 
 def samples(N):
-    la_max = np.array([1e0, -0.5, 1e0, 1e-1, -1e-5, 1e-5])
-    la_min = np.array([-1e0, -1e0, -1e0, -1e-1, -1e-3, 1e-6])
+    la_max = np.array([1e1, 10.0, 1e0, 1e0, 1e-2, 1e-3])
+    la_min = np.array([-1e1, -10.0, -1e0, -1e0, -1e-2, 1e-6])
     La = [];
     La0 = [];
     Mo = [];
-    maxIter = 12;
+    maxIter = 14;
     count = 0;
 
     while count < N:
@@ -95,6 +95,7 @@ def samples(N):
                 #l = [0.2, -0.8, 0.001, 0.018593832044992313, -1.871653293058986e-4, 4.510326771150121e-06]
                 #l = [1e-16, -0.7132132529055115, 1e-16, 0.018593832044992313, -1.871653293058986e-10, 4.510326771150121e-06]
                 #l = [ 1.00000000e-16, -7.13213252e-01,  1.00000000e-16,  1.85938318e-02, 1.00000000e-16,  4.51032559e-06]
+                #l = [ 1.00000000e-4, -7.13213252e-01,  1.00000000e-4,  1.85938318e-02, 2.00000000e-4,  4.51032559e-06]
                 intt = integrate.quad(Z, -1e1, 1e1, args=(l));
                 intt0 = np.array(intt[0])
                 q1 = integrate.quad(zh1, -1e1, 1e1, args=(l));
@@ -110,16 +111,17 @@ def samples(N):
                         print("iter "+str(i)," activation done!")
                         l0 = l;
 
-            s = 0.001;
+            s = 0.0005;
             rate = [s, s / 1000.0, s / 2.0, s / 1000.0, s / 4.0, s / 1000.0]
             q1 = np.array(integrate.quad(zh1, -1e1, 1e1, args=(l))) / intt0;
             while abs(q1[0])>10**(-2-i) and active == 1 and np.isnan(q1[0])==0 and  np.isinf(q1[0]) == 0:
                 dl =  np.array([integrate.quad(dh1dli, -1e1, 1e1, args=(l, i + 1)) for i in range(0, 6)]) / intt0;
                 l1 = l;
                 dl = dl[:, 0]
+                #s = s/(2.0*i+1.0)
                 raa = [0, 1, 2, 3, 4, 5]
                 for j in raa:
-                    l1[j] = l[j] + s * dl[j]# * q1abs[0]
+                    l1[j] = l[j] + rate[j] * dl[j]# * q1abs[0]
                 l[0] = 0.0;
                 l[2] = 0.0;
                 l[4] = 0.0;
@@ -135,21 +137,23 @@ def samples(N):
             rate = [1.0/3.0, 1.0/3.0, 1.0/15.0, 1.0/15.0, 1.0/105.0, 1.0/105.0]
             sg2 = 1.0
             q2 = np.array(integrate.quad(zh2, -1e1, 1e1, args=(l))) / intt0;
-            count = 0;
+            print("q2[0] = " + str(q2[0]))
             #if q2[0]>1.0:
             #    active = 0
+            ct = 0
+            st = 0.05
             while abs(q2[0] - 1.0) > 10**(-2-i) and active == 1 and np.isnan(q2[0]) == 0 and np.isinf(q2[0]) == 0:
                     d1 = np.array(
                         [integrate.quad(dh2dli, -1e1, 1e1, args=(l, i + 1)) for i in range(0, 6)]) / intt0;
                     d2 = ( q2[0]-1.0 );
-                    s = 0.1/(1.0*i+1)*abs(d2)
-                    dl = d1[:, 0]*d2
+                    s = 0.1/(st*i+1)*abs(d2)
+                    dl = d1[:, 0]*np.sign(d2)
                     #dlnm1 = dl.copy()
                   # print("l = " + str(l))
                     #lnm1 = l.copy()
                     raa = [1, 3, 5]
                     for j in raa:
-                        l[j] = l[j] + s*l[j]*np.sign(d2);
+                        l[j] = l[j] + s*np.sign(d2)
 #                    l[0] = 0.0;
 #                    l[2] = 0.0;
 #                    l[4] = 0.0;
@@ -173,9 +177,12 @@ def samples(N):
                     #    count = count + 1;
                     q2 = np.array(integrate.quad(zh2, -1e1, 1e1, args=(l))) / intt0;
 #                    print("s = " + str(s))
-                    print("q2[0] = " + str(q2[0]))
-                    if np.isnan(q2[0]) == 1 or np.isinf(q2[0]) == 1:
+                    print("q2[0]-1.0 = " + '{:.6e}'.format(float(q2[0]-1.0)))
+                    if np.isnan(q2[0]) == 1 or np.isinf(q2[0]) == 1 or ct==2000:
                         active = 0
+                    if ct==1000:
+                        st = st/10.0
+                    ct +=1;
 
 
 

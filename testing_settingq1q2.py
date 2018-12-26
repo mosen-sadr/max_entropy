@@ -18,7 +18,7 @@ for i in range(0,12):
 st0+= "\n"
 if os.stat(name_file).st_size ==0:
     f.write(st0);
-for i in range(0,1):
+for i in range(0,500):
     La, Mo, La0 = samples(1)
     Mo = np.array(Mo)
     La = np.array(La)
